@@ -1,0 +1,14 @@
+# Normalize line endings: store text with LF in the repo, check out native
+# (LF on Linux/macOS, CRLF on Windows). This avoids cross-platform churn and the
+# "LF will be replaced by CRLF" warnings without forcing a LF working tree on
+# Windows (which fights core.autocrlf=true and leaves files perpetually "modified").
+* text=auto
+
+# Treat binary assets as binary (no EOL munging, no diff).
+*.png   binary
+*.jpg   binary
+*.pdf   binary
+*.docx  binary
+*.zip   binary
+*.npy   binary
+*.npz   binary

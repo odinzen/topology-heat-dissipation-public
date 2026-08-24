@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "topoheat: Two-Way Coupled Thermoelastic Topology Optimization for Heat Dissipation"
+version: 1.0.0
+license: MIT
+authors:
+  - family-names: Bustamante
+    given-names: Michael E.
+    affiliation: Odinzen LLC
+    orcid: "https://orcid.org/0009-0009-9001-8151"

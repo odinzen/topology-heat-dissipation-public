@@ -1,0 +1,8 @@
+# Conda is the primary environment — see environment.yml. Kept for pip-only installs.
+# Pinned environment for reproduction (Python >=3.11)
+numpy==2.2.6
+scipy==1.15.3
+matplotlib==3.10.9
+jsonschema==4.26.0
+pyamg==5.3.0
+pillow==12.2.0

@@ -1,0 +1,51 @@
+# FreeCAD macro: turn the multi-solid design.step into ONE clean fused solid,
+# export it as design_solid.step, and save a render. Run from FreeCAD:
+# Macro menu -> Macros... -> create one, paste this, Execute. Or paste into the
+# Python console. Edit the two paths below to match where your files are.
+
+import os
+import FreeCAD as App
+import Part
+
+STEP_IN  = os.path.expanduser("~/te/geometry/truck_step/design.step")
+STEP_OUT = os.path.expanduser("~/te/geometry/truck_step/design_solid.step")
+PNG_OUT  = os.path.expanduser("~/te/design_render.png")
+
+shape = Part.Shape()
+shape.read(STEP_IN)
+solids = list(shape.Solids)
+App.Console.PrintMessage("read %d solids\n" % len(solids))
+
+# Pairwise (divide and conquer) fusion is far faster than a sequential loop.
+def fuse_all(items):
+    level = 0
+    while len(items) > 1:
+        nxt = []
+        for i in range(0, len(items), 2):
+            if i + 1 < len(items):
+                nxt.append(items[i].fuse(items[i + 1]))
+            else:
+                nxt.append(items[i])
+        items = nxt
+        level += 1
+        App.Console.PrintMessage("  level %d -> %d shapes\n" % (level, len(items)))
+    return items[0]
+
+fused = fuse_all(solids)
+fused = fused.removeSplitter()   # merge coplanar faces into clean faces
+App.Console.PrintMessage("fused: volume %.1f, %d faces\n" % (fused.Volume, len(fused.Faces)))
+fused.exportStep(STEP_OUT)
+App.Console.PrintMessage("wrote %s\n" % STEP_OUT)
+
+# Show it and, if the GUI is running, save a render.
+try:
+    import FreeCADGui as Gui
+    doc = App.ActiveDocument or App.newDocument("design")
+    Part.show(fused, "design_solid")
+    doc.recompute()
+    Gui.activeDocument().activeView().viewIsometric()
+    Gui.SendMsgToActiveView("ViewFit")
+    Gui.activeDocument().activeView().saveImage(PNG_OUT, 1600, 1000, "White")
+    App.Console.PrintMessage("saved render %s\n" % PNG_OUT)
+except Exception as e:
+    App.Console.PrintMessage("render skipped (run in the FreeCAD GUI to get a PNG): %s\n" % e)

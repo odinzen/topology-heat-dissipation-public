@@ -1,0 +1,22 @@
+{
+  "upload_type": "software",
+  "title": "topoheat: Two-Way Coupled Thermoelastic Topology Optimization for Heat Dissipation",
+  "version": "1.0.0",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    {"name": "Bustamante, Michael E.", "affiliation": "Odinzen LLC", "orcid": "0009-0009-9001-8151"}
+  ],
+  "keywords": [
+    "topology optimization",
+    "thermoelasticity",
+    "heat dissipation",
+    "two way coupling",
+    "multiphysics",
+    "algebraic multigrid",
+    "sensitivity verification",
+    "finite element analysis",
+    "electronics cooling"
+  ],
+  "description": "A reproducible engine for two-way coupled thermoelastic topology optimization, aimed at heat-dissipation geometry design. Every value is verified against a closed-form solution or an exact physical limit. A hardened JSON contract rejects physically invalid specifications before the solver; a bridge assembles the global mechanical and thermal arrays; a projected optimizer minimizes structural compliance under combined mechanical and design-dependent thermal loads. Sensitivities are verified against finite differences for the one-way, two-way, projected, three-dimensional, and thermal-stress objectives. The forward solver matches closed-form solutions at machine precision, the optimizer reproduces the canonical MBB beam, an algebraic-multigrid preconditioned solver holds the iteration count nearly flat as the mesh grows, and a monolithic Newton solve covers the strong-feedback regime. A single command, scripts/reproduce_all.py, runs the verification checks."
+}

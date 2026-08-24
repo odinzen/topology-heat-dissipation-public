@@ -1,0 +1,22 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 Odinzen LLC
+
+The data and figure files in this repository, namely the rendered figures in
+figures/ and any tabulated result or verification data produced by the code,
+are licensed under the Creative Commons Attribution 4.0 International License.
+You may share and adapt them for any purpose, including commercially, provided
+you give appropriate credit, link to the license, and indicate whether changes
+were made.
+
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:         https://creativecommons.org/licenses/by/4.0/
+
+Attribution:
+
+    M. E. Bustamante, "topoheat: thermoelastic topology optimization for heat
+    dissipation", Odinzen LLC (2026).
+    https://github.com/odinzen/topology-heat-dissipation-public
+
+The software in this repository is licensed separately under the MIT License;
+see LICENSE.

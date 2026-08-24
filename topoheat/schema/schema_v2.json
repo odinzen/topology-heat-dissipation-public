@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odinzen.dev/schemas/topopt-problem-v2.json",
+  "title": "TopologyOptimizationProblemSpecification",
+  "description": "Hardened problem specification for the Odinzen engine. domain_dimensions counts ELEMENTS along each axis; node counts derive as element count plus one per axis. The schema enforces dimensional alignment between the domain, the supports, and the loads. It cannot enforce the upper node index bound, which depends on the product of the derived node counts; the bridge layer performs that check at assembly time.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["domain_dimensions", "volume_fraction", "units", "dof_ordering", "supports", "loads"],
+  "properties": {
+    "domain_dimensions": {
+      "type": "array",
+      "description": "Element counts per spatial axis: [NEX, NEY] in 2D or [NEX, NEY, NEZ] in 3D.",
+      "items": { "type": "integer", "minimum": 1 },
+      "minItems": 2,
+      "maxItems": 3
+    },
+    "volume_fraction": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1,
+      "description": "Target solid fraction. Endpoints excluded; a value of one is a fully solid trivial design."
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["length", "force"],
+      "properties": {
+        "length": { "type": "string", "enum": ["mm", "m", "in"] },
+        "force": { "type": "string", "enum": ["N", "kN", "lbf"] }
+      }
+    },
+    "dof_ordering": {
+      "type": "string",
+      "description": "Global degree of freedom layout the bridge must emit. node_major interleaves components per node; dof_major groups all nodes per component. The target solver dictates this value.",
+      "enum": ["node_major", "dof_major"]
+    },
+    "supports": {
+      "type": "array",
+      "description": "Homogeneous Dirichlet constraints. Each entry fixes the listed local components at the listed nodes to zero displacement.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_indices", "fixed_components"],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "minItems": 1
+          },
+          "fixed_components": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "uniqueItems": true,
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "loads": {
+      "type": "array",
+      "description": "Neumann loads. Each entry applies one force_vector at every listed node. The force_vector length equals the spatial dimension, which removes any parallel array pairing between components and magnitudes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_indices", "force_vector"],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "minItems": 1
+          },
+          "force_vector": {
+            "type": "array",
+            "items": { "type": "number" }
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": { "domain_dimensions": { "maxItems": 2 } }
+  },
+  "then": {
+    "properties": {
+      "supports": {
+        "items": {
+          "properties": {
+            "fixed_components": { "items": { "enum": [0, 1] } }
+          }
+        }
+      },
+      "loads": {
+        "items": {
+          "properties": {
+            "force_vector": { "minItems": 2, "maxItems": 2 }
+          }
+        }
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "supports": {
+        "items": {
+          "properties": {
+            "fixed_components": { "items": { "enum": [0, 1, 2] } }
+          }
+        }
+      },
+      "loads": {
+        "items": {
+          "properties": {
+            "force_vector": { "minItems": 3, "maxItems": 3 }
+          }
+        }
+      }
+    }
+  }
+}

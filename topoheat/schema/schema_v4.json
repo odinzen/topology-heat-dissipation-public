@@ -1,0 +1,595 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odinzen.dev/schemas/thermoelastic-problem-v4.json",
+  "title": "ThermoelasticTopologyOptimizationProblemSpecificationV4",
+  "description": "Hardened multiphysics problem specification for the Odinzen engine. domain_dimensions counts ELEMENTS per axis; node counts derive as element count plus one per axis. Mechanical nodes carry spatial_dims displacement components; thermal nodes carry one temperature component. The schema binds force and component dimensions to the domain through if/then/else and locks every object against unexpected keys. Upper node and element index bounds depend on the derived grid sizes and are enforced by the bridge at assembly time. v4 adds an optional materials library and a material_selection object so a single spec can request single, sweep, or two-material multi_material optimization. The single material card remains required for backward compatibility with v3 specs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "domain_dimensions",
+    "volume_fraction",
+    "units",
+    "dof_ordering",
+    "material",
+    "reference_temperature",
+    "objective",
+    "coupling",
+    "supports",
+    "loads",
+    "thermal_supports",
+    "thermal_loads"
+  ],
+  "properties": {
+    "domain_dimensions": {
+      "type": "array",
+      "description": "Element counts per spatial axis: [NEX, NEY] in 2D or [NEX, NEY, NEZ] in 3D.",
+      "items": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "minItems": 2,
+      "maxItems": 3
+    },
+    "volume_fraction": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "units": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "length",
+        "force",
+        "temperature"
+      ],
+      "properties": {
+        "length": {
+          "type": "string",
+          "enum": [
+            "mm",
+            "m",
+            "in"
+          ]
+        },
+        "force": {
+          "type": "string",
+          "enum": [
+            "N",
+            "kN",
+            "lbf"
+          ]
+        },
+        "temperature": {
+          "type": "string",
+          "enum": [
+            "K",
+            "C"
+          ]
+        }
+      }
+    },
+    "dof_ordering": {
+      "type": "string",
+      "enum": [
+        "node_major",
+        "dof_major"
+      ]
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "youngs_modulus",
+        "poisson_ratio",
+        "thermal_expansion",
+        "conductivity",
+        "density_floor",
+        "penalization",
+        "filter_radius"
+      ],
+      "properties": {
+        "youngs_modulus": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "poisson_ratio": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.5
+        },
+        "thermal_expansion": {
+          "type": "number",
+          "minimum": 0
+        },
+        "conductivity": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "density_floor": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 0.1,
+          "description": "Ersatz lower bound on density. Keeps both stiffness and conductivity matrices positive definite as elements approach void."
+        },
+        "penalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "stiffness",
+            "conductivity"
+          ],
+          "properties": {
+            "stiffness": {
+              "type": "number",
+              "minimum": 1
+            },
+            "conductivity": {
+              "type": "number",
+              "minimum": 1
+            }
+          }
+        },
+        "filter_radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Density filter radius in element units. Suppresses checkerboarding and enforces mesh independence."
+        }
+      }
+    },
+    "reference_temperature": {
+      "type": "number",
+      "description": "Stress free reference temperature. Thermal strain derives from the difference between the solved field and this value."
+    },
+    "objective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "thermoelastic_compliance",
+            "weighted_stiffness_conductivity",
+            "thermal_stress",
+            "heat_conduction"
+          ]
+        },
+        "weight_mechanical": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weight_thermal": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "stress_p_norm": {
+          "type": "number",
+          "minimum": 2,
+          "description": "Aggregation exponent for the thermal_stress mode. Higher values approach the true maximum at the cost of conditioning."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "weighted_stiffness_conductivity"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "weight_mechanical",
+              "weight_thermal"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "thermal_stress"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "stress_p_norm"
+            ]
+          }
+        }
+      ]
+    },
+    "coupling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "one_way",
+            "two_way"
+          ]
+        },
+        "fixed_point_tolerance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "fixed_point_max_iter": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "two_way"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "fixed_point_tolerance",
+              "fixed_point_max_iter"
+            ]
+          }
+        }
+      ]
+    },
+    "kinetic_constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Side constraints that act as the real world limit on the thermodynamic optimum.",
+      "properties": {
+        "max_temperature_gradient": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_cooling_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "min_feature_size": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "supports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_indices",
+          "fixed_components"
+        ],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "fixed_components": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "uniqueItems": true,
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "loads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_indices",
+          "force_vector"
+        ],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "force_vector": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "thermal_supports": {
+      "type": "array",
+      "description": "Prescribed temperature constraints, the thermal Dirichlet set.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_indices",
+          "temperature"
+        ],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "temperature": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "thermal_loads": {
+      "type": "array",
+      "description": "Applied nodal heat. Each entry deposits one power value at every listed node.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_indices",
+          "power"
+        ],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "power": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "convection": {
+      "type": "array",
+      "description": "Robin boundary entries combining a film coefficient and an ambient temperature on a node set.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "node_indices",
+          "film_coefficient",
+          "ambient_temperature"
+        ],
+        "properties": {
+          "node_indices": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "minItems": 1
+          },
+          "film_coefficient": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "ambient_temperature": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "materials": {
+      "type": "array",
+      "description": "Optional material library. In multi_material mode the first two entries are blended per element as relative material A and B.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "youngs_modulus",
+          "poisson_ratio",
+          "thermal_expansion",
+          "conductivity",
+          "density"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "youngs_modulus": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "poisson_ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 0.5
+          },
+          "thermal_expansion": {
+            "type": "number",
+            "minimum": 0
+          },
+          "conductivity": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "density": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      }
+    },
+    "material_selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "single",
+            "sweep",
+            "multi_material"
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "domain_dimensions": {
+            "maxItems": 2
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "supports": {
+            "items": {
+              "properties": {
+                "fixed_components": {
+                  "items": {
+                    "enum": [
+                      0,
+                      1
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "loads": {
+            "items": {
+              "properties": {
+                "force_vector": {
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "supports": {
+            "items": {
+              "properties": {
+                "fixed_components": {
+                  "items": {
+                    "enum": [
+                      0,
+                      1,
+                      2
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "loads": {
+            "items": {
+              "properties": {
+                "force_vector": {
+                  "minItems": 3,
+                  "maxItems": 3
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "material_selection": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "sweep",
+                  "multi_material"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "material_selection"
+        ]
+      },
+      "then": {
+        "required": [
+          "materials"
+        ],
+        "properties": {
+          "materials": {
+            "minItems": 2
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "material_selection": {
+            "properties": {
+              "mode": {
+                "const": "multi_material"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        "required": [
+          "material_selection"
+        ]
+      },
+      "then": {
+        "required": [
+          "materials"
+        ],
+        "properties": {
+          "materials": {
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  ]
+}

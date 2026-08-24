@@ -1,0 +1,3 @@
+# Conda is the primary environment — see environment.yml. Kept for pip-only installs.
+-r requirements.txt
+pytest>=8.0

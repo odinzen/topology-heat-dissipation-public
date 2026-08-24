@@ -1,0 +1,45 @@
+{
+  "reference": "structural_steel",
+  "materials": [
+    {
+      "name": "structural_steel",
+      "E_GPa": 210,
+      "nu": 0.30,
+      "alpha_per_K": 12e-6,
+      "k_W_mK": 50,
+      "density_kg_m3": 7850
+    },
+    {
+      "name": "aluminum_6061",
+      "E_GPa": 69,
+      "nu": 0.33,
+      "alpha_per_K": 23.6e-6,
+      "k_W_mK": 167,
+      "density_kg_m3": 2700
+    },
+    {
+      "name": "titanium_Ti6Al4V",
+      "E_GPa": 114,
+      "nu": 0.34,
+      "alpha_per_K": 8.6e-6,
+      "k_W_mK": 6.7,
+      "density_kg_m3": 4430
+    },
+    {
+      "name": "copper_C11000",
+      "E_GPa": 117,
+      "nu": 0.34,
+      "alpha_per_K": 17e-6,
+      "k_W_mK": 398,
+      "density_kg_m3": 8940
+    },
+    {
+      "name": "invar_36",
+      "E_GPa": 141,
+      "nu": 0.29,
+      "alpha_per_K": 1.2e-6,
+      "k_W_mK": 10,
+      "density_kg_m3": 8100
+    }
+  ]
+}

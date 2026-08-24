@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Topology-Optimized 3D Structure — Viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden;
+    font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+  #app { position: fixed; inset: 0; background: #e9e9eb; }
+  #hud {
+    position: fixed; top: 14px; left: 14px; z-index: 10;
+    color: #2a2a2c; font-size: 13px; line-height: 1.5;
+    background: rgba(255,255,255,0.72); padding: 10px 14px;
+    border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  #hud b { font-weight: 600; }
+  #hud .small { color: #6a6a6e; font-size: 11px; }
+  #err { color: #a33; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <b>Topology-Optimized 3D Structure</b><br/>
+  <span id="stats" class="small">loading mesh…</span><br/>
+  <span class="small">drag = orbit · scroll = zoom · right-drag = pan</span>
+</div>
+
+<!-- Three.js + OrbitControls from cdnjs (both MIT). r128 classic-global build. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/js/controls/OrbitControls.js"></script>
+
+<!-- Inline geometry (default, file://-portable; no server required). -->
+<script src="viewer_mesh.js"></script>
+
+<script>
+(function () {
+  var hud = document.getElementById('stats');
+  if (typeof THREE === 'undefined') {
+    hud.innerHTML = '<span id="err">Three.js failed to load (need internet for cdnjs).</span>';
+    return;
+  }
+  var MESH = window.MESH_DATA;
+  if (!MESH) {
+    hud.innerHTML = '<span id="err">viewer_mesh.js not found — run geometry_export.py.</span>';
+    return;
+  }
+
+  var container = document.getElementById('app');
+  var W = window.innerWidth, H = window.innerHeight;
+
+  // ---- scene / background ----
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xe9e9eb);
+
+  var camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 5000);
+
+  var renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
+  renderer.setSize(W, H);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  container.appendChild(renderer.domElement);
+
+  // ---- geometry from inline arrays ----
+  var geom = new THREE.BufferGeometry();
+  var verts = new Float32Array(MESH.vertices);
+  var faces = new Uint32Array(MESH.faces);
+  geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+  geom.setIndex(new THREE.BufferAttribute(faces, 1));
+  geom.computeVertexNormals();
+  geom.computeBoundingBox();
+  geom.computeBoundingSphere();
+
+  // neutral grey material
+  var material = new THREE.MeshStandardMaterial({
+    color: 0x9a9aa0, metalness: 0.05, roughness: 0.72,
+    flatShading: false, side: THREE.DoubleSide
+  });
+  var mesh = new THREE.Mesh(geom, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  // size / framing
+  var bs = geom.boundingSphere;
+  var bb = geom.boundingBox;
+  var radius = bs.radius;
+  var center = bs.center.clone();
+
+  // ---- ground plane + soft shadow ----
+  var groundY = bb.min.z; // model rests on z=0 (built that way in exporter)
+  var groundGeo = new THREE.PlaneGeometry(radius * 12, radius * 12);
+  var groundMat = new THREE.ShadowMaterial({ opacity: 0.22 });
+  var ground = new THREE.Mesh(groundGeo, groundMat);
+  // model is in (x,y,z) with z up; rotate plane to the XY plane at z=min
+  ground.position.set(center.x, center.y, groundY);
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // subtle solid grey backing plane so shadow reads on light-grey bg
+  var backMat = new THREE.MeshStandardMaterial({ color: 0xdedee1, roughness: 1.0, metalness: 0.0 });
+  var back = new THREE.Mesh(groundGeo.clone(), backMat);
+  back.position.set(center.x, center.y, groundY - 0.01);
+  back.receiveShadow = true;
+  scene.add(back);
+
+  // ---- lights (neutral) ----
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xbcbcc0, 0.85));
+  var key = new THREE.DirectionalLight(0xffffff, 0.85);
+  key.position.set(center.x + radius * 2, center.y - radius * 2.5, groundY + radius * 4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  var d = radius * 3.5;
+  key.shadow.camera.left = -d; key.shadow.camera.right = d;
+  key.shadow.camera.top = d; key.shadow.camera.bottom = -d;
+  key.shadow.camera.near = 0.1; key.shadow.camera.far = radius * 12;
+  scene.add(key);
+  var fill = new THREE.DirectionalLight(0xffffff, 0.3);
+  fill.position.set(center.x - radius * 2, center.y + radius * 2, groundY + radius * 2);
+  scene.add(fill);
+
+  // ---- camera + controls ----
+  // z is up for this dataset
+  camera.up.set(0, 0, 1);
+  camera.position.set(center.x + radius * 2.4, center.y - radius * 2.6, groundY + radius * 2.0);
+  camera.lookAt(center);
+
+  var controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.target.copy(center);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.screenSpacePanning = true;
+  controls.minDistance = radius * 0.5;
+  controls.maxDistance = radius * 20;
+  controls.update();
+
+  hud.innerHTML = 'isosurface @ 0.5 · <b>' + MESH.vertexCount +
+                  '</b> verts · <b>' + MESH.faceCount + '</b> faces';
+
+  function onResize() {
+    var w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
+  window.addEventListener('resize', onResize);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
+</body>
+</html>
