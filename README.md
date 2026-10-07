@@ -87,6 +87,14 @@ export stack is MIT/BSD; see `docs/GEOMETRY_LICENSES.md`. Geometry export needs
 
 Code: MIT (`LICENSE`). Data and figures: CC BY 4.0 (`DATA_LICENSE.md`).
 
+## Worked example for the cooling review
+
+`review_example/` holds the scripts behind Section 6 of the data-center cooling review (Bustamante,
+Bustamante, Lilova, Applied Thermal Engineering, under review): the optimized conductor tree and its
+comparison with straight fins and a uniform plate, the thin 3D cold plate, and the crack-damage analysis
+(heat conduction and mechanical damage only). Its README maps each figure and table to a script and
+lists the values a clean run reproduces.
+
 ## Citation
 
 See `CITATION.cff`. Archived on Zenodo (metadata in `.zenodo.json`).
